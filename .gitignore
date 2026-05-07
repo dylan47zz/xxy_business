@@ -1,0 +1,22 @@
+# 排除大文件
+*.pdf
+*.md.html
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# 数据文件
+annual_reports/
+*.xlsx
+*.xls
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
