@@ -1,6 +1,5 @@
-# 排除大文件
-*.pdf
-*.md.html
+# PDFs tracked by Git LFS
+*.pdf filter=lfs diff=lfs merge=lfs -text
 
 # Python
 __pycache__/
@@ -9,10 +8,8 @@ __pycache__/
 venv/
 *.egg-info/
 
-# 数据文件
-annual_reports/
-*.xlsx
-*.xls
+# 下载日志
+download_log.txt
 
 # macOS
 .DS_Store
