@@ -9,7 +9,25 @@
 
 本项目通过对 **18家中国商业银行**（6家国有大型银行 + 10家全国性股份制银行 + 广发银行 + 恒丰银行）**2023-2025年年报**进行NLP文本挖掘，构建"金融科技采纳指数（FAI）"，并实证检验其与不良贷款率（NPL）之间的关系。
 
-**核心发现：** FAI 与 NPL 显著负相关（r = -0.508），OLS+控制变量回归系数 β = -0.057（p < 0.001）。
+**核心发现：** FAI 与 NPL 显著负相关（r = -0.606），OLS+控制变量回归系数 β = -0.061（p < 0.001）；信贷业务层子FAI β = -0.328，风控模型层子FAI β = -0.808。
+
+---
+
+## 📊 分析产物直达链接
+
+| 文件 | 说明 | 链接 |
+|------|------|------|
+| 📋 面板数据 | 54条银行-年度观测值（含四维度子FAI） | [panel_data.csv](data/analysis/panel_data.csv) |
+| 📋 原始提取数据 | 自动提取的财务+词频JSON | [panel_data_raw.json](data/analysis/panel_data_raw.json) |
+| 📊 Excel分析报告 | 描述统计 + 相关矩阵 + 回归结果（5个模型） | [analysis_results.xlsx](data/analysis/analysis_results.xlsx) |
+| 📝 英文论文草稿 | ~2700字学术论文 | [research_paper.md](data/analysis/research_paper.md) |
+| 📝 中文研究报告 | ~2700字中文研究报告 | [research_paper_cn.md](data/analysis/research_paper_cn.md) |
+| 🖼️ 金融科技词云 | 全样本关键词词云 | [wordcloud.png](data/analysis/wordcloud.png) |
+| 🖼️ 国有vs股份制词云 | 银行类型对比词云 | [wordcloud_comparison_type.png](data/analysis/wordcloud_comparison_type.png) |
+| 🖼️ 2023vs2025词云 | 年份演变对比词云 | [wordcloud_comparison_year.png](data/analysis/wordcloud_comparison_year.png) |
+| 🖼️ FAI趋势图 | 分组平均FAI年度趋势 + 2025对比 | [fai_trend.png](data/analysis/fai_trend.png) |
+| 🖼️ NPL趋势图 | 分组平均NPL年度趋势 + 2025对比 | [npl_trend.png](data/analysis/npl_trend.png) |
+| 🖼️ FAI vs NPL散点 | 全样本散点 + 回归线 + 按年份分面 | [scatter_fai_npl.png](data/analysis/scatter_fai_npl.png) |
 
 ---
 
@@ -24,19 +42,23 @@ bank_fintech_research/
 │   ├── 03_extract_data.py    # Step 3: 提取财务指标 + 词频
 │   ├── 04_build_panel.py     # Step 4: 构建面板数据集
 │   ├── 05_analysis.py        # Step 5: 统计分析（回归+图表）
-│   └── 06_generate_paper.py  # Step 6: 生成英文论文草稿
+│   ├── 06_generate_paper.py  # Step 6: 生成英文论文草稿
+│   └── 07_generate_paper_cn.py # Step 7: 生成中文研究报告
 └── data/
     ├── markdown/             # 54份年报 Markdown（18家 × 3年）
     ├── pdf/                  # 广发+恒丰6份PDF（其余16家本地保存）
     └── analysis/             # 分析输出
-        ├── panel_data.csv        # 面板数据（54条）
-        ├── panel_data_raw.json   # 自动提取原始数据
-        ├── analysis_results.xlsx # 描述统计/相关矩阵/回归结果
-        ├── wordcloud.png         # 金融科技词云图
-        ├── fai_trend.png         # FAI年度趋势图
-        ├── npl_trend.png         # NPL年度趋势图
-        ├── scatter_fai_npl.png   # FAI vs NPL 散点图
-        └── research_paper.md     # 3000字英文论文草稿
+        ├── panel_data.csv            # 面板数据（54条）
+        ├── panel_data_raw.json       # 自动提取原始数据
+        ├── analysis_results.xlsx     # 描述统计/相关矩阵/回归结果
+        ├── wordcloud.png             # 金融科技词云图
+        ├── wordcloud_comparison_type.png  # 国有vs股份制对比词云
+        ├── wordcloud_comparison_year.png  # 2023vs2025对比词云
+        ├── fai_trend.png             # FAI年度趋势图
+        ├── npl_trend.png             # NPL年度趋势图
+        ├── scatter_fai_npl.png       # FAI vs NPL 散点图
+        ├── research_paper.md         # 英文论文草稿
+        └── research_paper_cn.md      # 中文研究报告
 ```
 
 ---
