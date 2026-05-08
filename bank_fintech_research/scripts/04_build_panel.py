@@ -172,8 +172,20 @@ def build_panel_data(raw_path: Path, output_path: Path):
             fintech_total = raw.get('fintech_total', 0) or 0
             char_count = raw.get('char_count', 0) or raw.get('raw_char_count', 0) or 1
 
+            # 四维度子词频
+            dim_counts = raw.get('dim_counts', {})
+            fintech_strategy = dim_counts.get('strategy', 0) or 0
+            fintech_algorithm = dim_counts.get('algorithm', 0) or 0
+            fintech_risk_model = dim_counts.get('risk_model', 0) or 0
+            fintech_credit = dim_counts.get('credit', 0) or 0
+
             # 计算 FAI = 词频总数 / 字符数 * 10000
             fai = round(fintech_total / char_count * 10000, 4) if char_count > 0 else 0
+            # 子维度 FAI
+            fai_strategy = round(fintech_strategy / char_count * 10000, 4) if char_count > 0 else 0
+            fai_algorithm = round(fintech_algorithm / char_count * 10000, 4) if char_count > 0 else 0
+            fai_risk_model = round(fintech_risk_model / char_count * 10000, 4) if char_count > 0 else 0
+            fai_credit = round(fintech_credit / char_count * 10000, 4) if char_count > 0 else 0
 
             # 计算 ln(总资产)
             size = round(math.log(total_assets), 4) if total_assets and total_assets > 0 else None
@@ -188,8 +200,16 @@ def build_panel_data(raw_path: Path, output_path: Path):
                 'total_assets': total_assets,
                 'size': size,
                 'fintech_total': fintech_total,
+                'fintech_strategy': fintech_strategy,
+                'fintech_algorithm': fintech_algorithm,
+                'fintech_risk_model': fintech_risk_model,
+                'fintech_credit': fintech_credit,
                 'char_count': char_count,
                 'fai': fai,
+                'fai_strategy': fai_strategy,
+                'fai_algorithm': fai_algorithm,
+                'fai_risk_model': fai_risk_model,
+                'fai_credit': fai_credit,
                 'fai_norm': None,  # 标准化后填充
             }
             panel.append(row)
@@ -205,7 +225,10 @@ def build_panel_data(raw_path: Path, output_path: Path):
 
     # 保存 CSV
     fieldnames = ['bank', 'year', 'bank_type', 'npl', 'roe', 'roa', 'total_assets',
-                  'size', 'fintech_total', 'char_count', 'fai', 'fai_norm']
+                  'size', 'fintech_total', 'fintech_strategy', 'fintech_algorithm',
+                  'fintech_risk_model', 'fintech_credit', 'char_count',
+                  'fai', 'fai_strategy', 'fai_algorithm', 'fai_risk_model', 'fai_credit',
+                  'fai_norm']
     with open(output_path, 'w', newline='', encoding='utf-8-sig') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()

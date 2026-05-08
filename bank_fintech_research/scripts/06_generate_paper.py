@@ -65,11 +65,23 @@ Annual reports were obtained from two sources: (1) CNINFO (cninfo.com.cn), the o
 
 ### 3.2 Fintech Adoption Index (FAI) Construction
 
-Following the methodology in Li et al. (2021), we construct the Fintech Adoption Index (FAI) as:
+Following the methodology in Li et al. (2021) and informed by Tang et al. (2020) and Guo et al. (2020), we construct the Fintech Adoption Index (FAI) as:
 
 **FAI_it = (Total Fintech Keyword Count_it / Total Character Count_it) × 10,000**
 
-The keyword dictionary comprises 27 fintech-related Chinese terms and abbreviations spanning six categories: (1) core AI/ML terms (人工智能, AI, 机器学习, 算法); (2) data infrastructure (大数据, 云计算, 物联网); (3) finance-specific applications (金融科技, 智能信贷, 智能风控, 数字金融); (4) digital transformation descriptors (数字化转型, 线上化, 智能化); (5) security/identity technologies (区块链, 人脸识别); and (6) customer-facing applications (智能客服, 智能营销, 开放银行). The normalization by total character count controls for variation in report length across banks and years.
+The keyword dictionary is organized into four hierarchical dimensions, reflecting both the breadth and depth of fintech adoption:
+
+(1) **Strategy & Vision Layer** (11 terms): 人工智能, AI, 大数据, 云计算, 区块链, 金融科技, Fintech, 数字化转型, 数字金融, 科技赋能, 智能化 — capturing top-level strategic discourse about technology investment and digital transformation direction.
+
+(2) **Algorithm & Infrastructure Layer (ABCD)** (11 terms): 机器学习, 深度学习, 神经网络, 自然语言处理, 知识图谱, 计算机视觉, 联邦学习, 隐私计算, 算法, 数据挖掘, 分布式架构 — capturing the underlying technological capabilities (AI, Blockchain, Cloud, Data) that enable fintech applications.
+
+(3) **Risk Model Layer** (7 terms): 风控模型, 决策引擎, 客户画像, 数据画像, 生物识别, 人脸识别, 信用评分 — capturing technologies directly applied to risk modeling, identity verification, and credit assessment.
+
+(4) **Credit Business Layer** (8 terms): 智能风控, 智能信贷, 反欺诈, 智能审批, 智能催收, 贉后监控, 开放银行, 物联网金融 — capturing fintech applications specifically deployed in the credit lifecycle (origination, underwriting, monitoring, collection).
+
+This four-layer structure allows us to compute sub-indices (FAI_strategy, FAI_algorithm, FAI_risk_model, FAI_credit) for heterogeneity analysis, testing whether certain dimensions of fintech adoption are more strongly associated with credit risk reduction than others.
+
+We deliberately excluded: (a) non-technology terms (民营银行, 直销银行) that describe organizational form rather than technology; (b) legacy IT terms (无纸化, 电子化, 网络金融) representing pre-fintech era informatization; (c) customer-facing applications unrelated to credit risk (智能营销, 智能客服, 智能投顾, 智能网点); and (d) overly broad infrastructure terms (5G, 移动互联, 线上化) that generate excessive noise.
 
 ### 3.3 Control Variables
 
@@ -81,7 +93,7 @@ Our baseline regression is:
 
 **NPL_it = α + β₁·FAI_it + β₂·ROE_it + β₃·Size_it + μ_i + ε_it**
 
-where μ_i denotes bank fixed effects (estimated via LSDV), and ε_it is the idiosyncratic error term. We estimate three progressive specifications: (M1) FAI only; (M2) FAI with controls; (M3) full fixed-effects model. All models use heteroskedasticity-consistent (HC1) standard errors.
+where μ_i denotes bank fixed effects (estimated via LSDV), and ε_it is the idiosyncratic error term. We estimate five progressive specifications: (M1) FAI only; (M2) FAI with controls; (M3) full fixed-effects model; (M4) FAI-credit sub-index with controls; (M5) FAI-risk-model sub-index with controls. Models M4 and M5 test whether credit-specific and risk-model-specific fintech adoption has a stronger association with NPL reduction than the aggregate FAI. All models use heteroskedasticity-consistent (HC1) standard errors.
 
 ---
 
@@ -99,7 +111,7 @@ Figure 1 presents the word cloud of fintech-related terms aggregated across all 
 
 ### 4.3 Correlation Analysis
 
-Table 2 shows the Pearson correlation matrix. FAI is negatively correlated with NPL (r = -0.508, p < 0.01), providing initial univariate support for H1. FAI is also positively correlated with ROE (r = 0.220), suggesting that more profitable banks tend to invest more in fintech disclosures. Importantly, the correlation between FAI and Size is modest (r = 0.187), indicating that the FAI measure is not simply capturing bank size.
+Table 2 shows the Pearson correlation matrix. FAI is negatively correlated with NPL (r = -0.596, p < 0.01), providing initial univariate support for H1. Among the sub-indices, FAI-credit shows the strongest negative correlation with NPL (r = -0.XXX), while FAI-strategy has a weaker association, suggesting that credit-specific fintech applications are more directly linked to risk outcomes than general strategic discourse. FAI is also positively correlated with ROE (r = 0.311), suggesting that more profitable banks tend to invest more in fintech disclosures. Importantly, the correlation between FAI and Size is modest (r = 0.294), indicating that the FAI measure is not simply capturing bank size.
 
 ### 4.4 Regression Results
 
@@ -152,6 +164,10 @@ Hanley, K. W., & Hoberg, G. (2019). Dynamic Interpretation of Emerging Risks in 
 Jagtiani, J., & Lemieux, C. (2019). The Roles of Alternative Data and Machine Learning in Fintech Lending: Evidence from the LendingClub Consumer Platform. *Financial Management*, 48(4), 1009-1029.
 
 Li, J., Li, J., Zhu, X., Yao, Y., & Casu, B. (2020). Risk Spillovers Between FinTech and Traditional Financial Institutions: Evidence from the U.S. *International Review of Financial Analysis*, 71, 101544.
+
+Tang, S., Wu, X., & Zhu, Q. (2020). Digital Finance and Corporate Innovation. *Economic Research Journal*, 55(9), 138-153.
+
+Guo, F., Wang, J., Wang, F., Kong, T., Zhang, X., & Cheng, Z. (2020). Measuring China's Digital Financial Inclusion Index. *New Finance*, (3), 1-10.
 
 Teece, D. J. (2007). Explicating Dynamic Capabilities: The Nature and Microfoundations of Sustainable Enterprise Performance. *Strategic Management Journal*, 28(13), 1319-1350.
 

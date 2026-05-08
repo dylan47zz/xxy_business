@@ -16,16 +16,48 @@ from typing import Optional, Dict, List, Tuple
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# 金融科技关键词库（与pdf_to_markdown.py保持一致，并做扩展）
-FINTECH_KEYWORDS = [
-    '人工智能', 'AI', '机器学习', '大数据', '风控模型', '算法',
-    '数字金融', '智能信贷', '金融科技', 'Fintech', 'fintech',
-    '云计算', '区块链', '人脸识别', '智能风控', '开放银行',
-    '数字化转型', '数字转型', '线上化', '智能化', '科技赋能',
-    '科技输出', '移动互联', '物联网', '5G',
-    '智能营销', '智能客服', '智能投顾', '智能网点',
-    '无纸化', '电子化', '网络金融', '直销银行',
-]
+# 金融科技关键词库 —— 四维度分层设计（学术优化版）
+# 参考: 唐松等(2020), 郭峰等(2020)
+# 剔除: 非技术类(民营银行/直销银行)、传统IT(无纸化/电子化)、
+#        早期概念(网络金融)、无关风控(智能营销/客服/投顾/网点)、
+#        过宽泛(5G/移动互联/线上化)、重复词(金融科技×2/智能风控×2/Fintech×2)
+FINTECH_KEYWORD_DIMENSIONS = {
+    'strategy': [
+        # 综合与战略层：金融科技战略表述
+        '人工智能', 'AI', '大数据', '云计算', '区块链',
+        '金融科技', 'Fintech', '数字化转型', '数字金融',
+        '科技赋能', '智能化',
+    ],
+    'algorithm': [
+        # 底层算法层（ABCD）：支撑技术
+        '机器学习', '深度学习', '神经网络', '自然语言处理',
+        '知识图谱', '计算机视觉', '联邦学习', '隐私计算',
+        '算法', '数据挖掘', '分布式架构',
+    ],
+    'risk_model': [
+        # 风控模型层：风控建模与识别
+        '风控模型', '决策引擎', '客户画像', '数据画像',
+        '生物识别', '人脸识别', '信用评分',
+    ],
+    'credit': [
+        # 信贷业务层：信贷风控应用
+        '智能风控', '智能信贷', '反欺诈', '智能审批',
+        '智能催收', '贷后监控', '开放银行', '物联网金融',
+    ],
+}
+
+# 扁平化关键词列表（用于统一统计）
+FINTECH_KEYWORDS = []
+for dim_kws in FINTECH_KEYWORD_DIMENSIONS.values():
+    FINTECH_KEYWORDS.extend(dim_kws)
+
+# 维度名称映射（中文，用于Markdown输出）
+DIMENSION_NAMES = {
+    'strategy': '综合与战略层',
+    'algorithm': '底层算法层(ABCD)',
+    'risk_model': '风控模型层',
+    'credit': '信贷业务层',
+}
 
 # 18家银行配置
 BANKS = {
@@ -137,19 +169,33 @@ def extract_total_assets_from_text(text: str) -> Optional[float]:
     return None
 
 
-def count_fintech_keywords(text: str) -> Tuple[Dict[str, int], int]:
-    """统计金融科技关键词频率"""
+def count_fintech_keywords(text: str) -> Tuple[Dict[str, int], int, Dict[str, int], int]:
+    """统计金融科技关键词频率（含四维度子统计）
+    
+    Returns:
+        counts: 各关键词出现次数
+        total: 总词频
+        dim_counts: 各维度总词频 {dim_name: count}
+        char_count: 有效字符数
+    """
     text_lower = text.lower()
     counts = {}
-    for kw in FINTECH_KEYWORDS:
-        kw_lower = kw.lower()
-        count = text_lower.count(kw_lower)
-        if count > 0:
-            counts[kw] = count
+    dim_counts = {}
+    
+    for dim_name, dim_kws in FINTECH_KEYWORD_DIMENSIONS.items():
+        dim_total = 0
+        for kw in dim_kws:
+            kw_lower = kw.lower()
+            count = text_lower.count(kw_lower)
+            if count > 0:
+                counts[kw] = count
+                dim_total += count
+        dim_counts[dim_name] = dim_total
+    
     total = sum(counts.values())
-    # 字符数（中文）
+    # 字符数（中文+英文+数字）
     char_count = len(re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]', '', text))
-    return counts, total, char_count
+    return counts, total, dim_counts, char_count
 
 
 def process_pdf_to_markdown(pdf_path: Path, md_dir: Path) -> Optional[Dict]:
@@ -183,9 +229,9 @@ def process_pdf_to_markdown(pdf_path: Path, md_dir: Path) -> Optional[Dict]:
 
     logger.info(f"  NPL={npl}%, ROE={roe}%, ROA={roa}%, 总资产={total_assets}亿")
 
-    # 统计关键词
-    kw_counts, kw_total, char_count = count_fintech_keywords(text)
-    logger.info(f"  金融科技词频: {kw_total}次")
+    # 统计关键词（含维度子统计）
+    kw_counts, kw_total, dim_counts, char_count = count_fintech_keywords(text)
+    logger.info(f"  金融科技词频: {kw_total}次 (战略={dim_counts['strategy']}, 算法={dim_counts['algorithm']}, 风控={dim_counts['risk_model']}, 信贷={dim_counts['credit']})")
 
     # 生成Markdown
     parts = pdf_path.stem.split('_')
@@ -212,13 +258,27 @@ def process_pdf_to_markdown(pdf_path: Path, md_dir: Path) -> Optional[Dict]:
         md_lines.append(f"| 总资产(亿元) | {total_assets:,.0f} |\n")
 
     md_lines += [
-        "\n## 金融科技关键词词频\n",
-        "| 关键词 | 出现次数 |\n",
-        "|--------|----------|\n",
+        "\n## 金融科技关键词词频（四维度分层）\n",
     ]
+    # 各维度汇总
+    md_lines.append("| 维度 | 合计 |\n")
+    md_lines.append("|------|------|\n")
+    for dim_name, dim_label in DIMENSION_NAMES.items():
+        md_lines.append(f"| {dim_label} | {dim_counts[dim_name]} |\n")
+    md_lines.append(f"\n**总计: {kw_total} 次**\n")
+    # 各关键词明细
+    md_lines += [
+        "\n### 关键词明细\n",
+        "| 关键词 | 维度 | 出现次数 |\n",
+        "|--------|------|----------|\n",
+    ]
+    # 将关键词按维度归属
+    kw_to_dim = {}
+    for dim_name, dim_kws in FINTECH_KEYWORD_DIMENSIONS.items():
+        for kw in dim_kws:
+            kw_to_dim[kw] = DIMENSION_NAMES[dim_name]
     for kw, cnt in sorted(kw_counts.items(), key=lambda x: -x[1]):
-        md_lines.append(f"| {kw} | {cnt} |\n")
-    md_lines.append(f"\n**合计: {kw_total} 次**\n")
+        md_lines.append(f"| {kw} | {kw_to_dim.get(kw, '未知')} | {cnt} |\n")
 
     md_lines += [
         "\n## 正文内容（节选）\n",
@@ -242,6 +302,7 @@ def process_pdf_to_markdown(pdf_path: Path, md_dir: Path) -> Optional[Dict]:
         'total_assets': total_assets,
         'fintech_total': kw_total,
         'fintech_keywords': kw_counts,
+        'dim_counts': dim_counts,
         'char_count': char_count,
         'raw_char_count': len(text),
         'source': 'pdf',
@@ -268,17 +329,42 @@ def process_existing_markdown(md_path: Path) -> Optional[Dict]:
     roa = extract_roa_from_text(body_text)
     total_assets = extract_total_assets_from_text(body_text)
 
-    # 从Markdown的关键词表格中提取词频
-    kw_section = re.search(r'## 金融科技关键词词频\n(.*?)\n\*\*合计', content, re.DOTALL)
+    # 从Markdown的关键词表格中提取词频（兼容新旧格式）
     kw_counts = {}
     kw_total = 0
-    if kw_section:
-        kw_text = kw_section.group(1)
+    dim_counts = {dim: 0 for dim in FINTECH_KEYWORD_DIMENSIONS}
+    
+    # 新格式: 关键词明细表含维度列
+    kw_detail_section = re.search(r'### 关键词明细\n(.*?)\n', content, re.DOTALL)
+    if kw_detail_section:
+        kw_text = kw_detail_section.group(1)
         for line in kw_text.split('\n'):
-            match = re.match(r'\|\s*(.+?)\s*\|\s*(\d+)\s*\|', line)
+            match = re.match(r'\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\|', line)
             if match and match.group(1) not in ('关键词', '---'):
-                kw_counts[match.group(1)] = int(match.group(2))
-        kw_total = sum(kw_counts.values())
+                kw_counts[match.group(1)] = int(match.group(3))
+    
+    # 旧格式: 无维度列的简单表格
+    if not kw_counts:
+        kw_section = re.search(r'## 金融科技关键词词频\n(.*?)\n\*\*合计', content, re.DOTALL)
+        if kw_section:
+            kw_text = kw_section.group(1)
+            for line in kw_text.split('\n'):
+                match = re.match(r'\|\s*(.+?)\s*\|\s*(\d+)\s*\|', line)
+                if match and match.group(1) not in ('关键词', '---'):
+                    kw_counts[match.group(1)] = int(match.group(2))
+    
+    kw_total = sum(kw_counts.values())
+    
+    # 将关键词映射到维度
+    kw_to_dim = {}
+    for dim_name, dim_kws in FINTECH_KEYWORD_DIMENSIONS.items():
+        for kw in dim_kws:
+            kw_to_dim[kw.lower()] = dim_name
+    
+    for kw, cnt in kw_counts.items():
+        dim = kw_to_dim.get(kw.lower())
+        if dim:
+            dim_counts[dim] += cnt
 
     # 如果从正文提取失败，尝试从表格中获取
     if npl is None:
@@ -310,6 +396,7 @@ def process_existing_markdown(md_path: Path) -> Optional[Dict]:
         'total_assets': total_assets,
         'fintech_total': kw_total,
         'fintech_keywords': kw_counts,
+        'dim_counts': dim_counts,
         'char_count': char_count,
         'raw_char_count': raw_char_count,
         'source': 'markdown',

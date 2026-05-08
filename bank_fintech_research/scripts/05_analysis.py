@@ -74,12 +74,16 @@ def load_panel_data(csv_path: Path) -> pd.DataFrame:
 
 # ── 描述性统计 ────────────────────────────────────────────────────
 def descriptive_stats(df: pd.DataFrame) -> pd.DataFrame:
-    cols = ['npl', 'roe', 'roa', 'fai', 'fintech_total', 'total_assets']
+    cols = ['npl', 'roe', 'roa', 'fai', 'fai_strategy', 'fai_algorithm', 'fai_risk_model', 'fai_credit', 'fintech_total', 'total_assets']
     labels = {
         'npl': '不良贷款率(NPL, %)',
         'roe': '净资产收益率(ROE, %)',
         'roa': '总资产回报率(ROA, %)',
         'fai': 'Fintech采纳指数(FAI, ‱)',
+        'fai_strategy': 'FAI-综合战略层(‱)',
+        'fai_algorithm': 'FAI-底层算法层(‱)',
+        'fai_risk_model': 'FAI-风控模型层(‱)',
+        'fai_credit': 'FAI-信贷业务层(‱)',
         'fintech_total': 'Fintech关键词总次数',
         'total_assets': '总资产(亿元)',
     }
@@ -102,8 +106,9 @@ def descriptive_stats(df: pd.DataFrame) -> pd.DataFrame:
 
 # ── 相关性矩阵 ────────────────────────────────────────────────────
 def correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    cols = ['npl', 'roe', 'roa', 'fai', 'size']
-    labels = ['NPL', 'ROE', 'ROA', 'FAI', 'Size(ln)']
+    # 主相关性矩阵
+    cols = ['npl', 'roe', 'roa', 'fai', 'fai_strategy', 'fai_algorithm', 'fai_risk_model', 'fai_credit', 'size']
+    labels = ['NPL', 'ROE', 'ROA', 'FAI', 'FAI-战略', 'FAI-算法', 'FAI-风控', 'FAI-信贷', 'Size(ln)']
     sub = df[cols].dropna()
     corr = sub.corr(method='pearson').round(4)
     corr.index = labels
@@ -136,25 +141,45 @@ def panel_regression(df: pd.DataFrame) -> dict:
         X3 = sm.add_constant(pd.concat([sub[['fai', 'roe', 'size']], dummies], axis=1))
         m3 = OLS(sub['npl'], X3).fit(cov_type='HC1')
 
+        # 模型4: 信贷业务子FAI (fai_credit + controls)
+        sub4 = df[['bank', 'year', 'npl', 'fai_credit', 'roe', 'size']].dropna()
+        X4 = sm.add_constant(sub4[['fai_credit', 'roe', 'size']])
+        m4 = OLS(sub4['npl'], X4).fit(cov_type='HC1')
+
+        # 模型5: 风控模型子FAI (fai_risk_model + controls)
+        sub5 = df[['bank', 'year', 'npl', 'fai_risk_model', 'roe', 'size']].dropna()
+        X5 = sm.add_constant(sub5[['fai_risk_model', 'roe', 'size']])
+        m5 = OLS(sub5['npl'], X5).fit(cov_type='HC1')
+
         # 整理回归结果
         results = []
-        for i, (model, name) in enumerate([(m1, 'OLS (FAI only)'), (m2, 'OLS + Controls'), (m3, 'Fixed Effects')]):
-            for var in ['const', 'fai', 'roe', 'size']:
-                if var in model.params.index:
-                    coef = model.params[var]
-                    se = model.bse[var]
-                    t = model.tvalues[var]
-                    p = model.pvalues[var]
-                    sig = '***' if p < 0.01 else '**' if p < 0.05 else '*' if p < 0.1 else ''
-                    results.append({
-                        '模型': name,
-                        '变量': {'const': '截距', 'fai': 'FAI(Fintech采纳指数)', 'roe': 'ROE(净资产收益率)', 'size': 'Size(ln总资产)'}[var],
-                        '系数': round(coef, 5),
-                        '标准误': round(se, 5),
-                        't统计量': round(t, 3),
-                        'p值': round(p, 4),
-                        '显著性': sig,
-                    })
+        var_labels = {
+            'const': '截距', 'fai': 'FAI(Fintech采纳指数)',
+            'roe': 'ROE(净资产收益率)', 'size': 'Size(ln总资产)',
+            'fai_credit': 'FAI-信贷业务层', 'fai_risk_model': 'FAI-风控模型层',
+            'fai_strategy': 'FAI-综合战略层', 'fai_algorithm': 'FAI-底层算法层',
+        }
+        for i, (model, name) in enumerate([
+            (m1, 'OLS (FAI only)'), (m2, 'OLS + Controls'),
+            (m3, 'Fixed Effects'), (m4, 'Sub-FAI: Credit'),
+            (m5, 'Sub-FAI: Risk Model'),
+        ]):
+            for var in model.params.index:
+                if var.startswith('bank_'): continue  # 跳过银行虚拟变量
+                coef = model.params[var]
+                se = model.bse[var]
+                t = model.tvalues[var]
+                p = model.pvalues[var]
+                sig = '***' if p < 0.01 else '**' if p < 0.05 else '*' if p < 0.1 else ''
+                results.append({
+                    '模型': name,
+                    '变量': var_labels.get(var, var),
+                    '系数': round(coef, 5),
+                    '标准误': round(se, 5),
+                    't统计量': round(t, 3),
+                    'p值': round(p, 4),
+                    '显著性': sig,
+                })
             results.append({
                 '模型': name,
                 '变量': '--- 模型统计 ---',
@@ -173,35 +198,43 @@ def panel_regression(df: pd.DataFrame) -> dict:
             'model1': m1,
             'model2': m2,
             'model3': m3,
+            'model4': m4,
+            'model5': m5,
             'n_obs': len(sub),
         }
     except Exception as e:
         logger.error(f"回归分析失败: {e}")
-        return {'results_df': pd.DataFrame(), 'model1': None, 'model2': None, 'model3': None, 'n_obs': 0}
+        return {'results_df': pd.DataFrame(), 'model1': None, 'model2': None, 'model3': None, 'model4': None, 'model5': None, 'n_obs': 0}
 
 
 # ── 词云图 ────────────────────────────────────────────────────────
 def generate_wordcloud(md_dir: Path, output_path: Path):
-    """从所有年报Markdown生成词云"""
+    """从所有年报Markdown生成词云（使用优化后的关键词库）"""
     word_freq = Counter()
+    # 使用优化后的关键词库
     fintech_kws = [
-        '人工智能', 'AI', '机器学习', '大数据', '风控模型', '算法',
-        '数字金融', '智能信贷', '金融科技', 'Fintech',
-        '云计算', '区块链', '人脸识别', '智能风控', '开放银行',
-        '数字化转型', '线上化', '智能化', '科技赋能',
-        '移动互联', '物联网', '5G', '智能客服', '智能营销',
-        '无纸化', '电子化', '网络金融', '区块链技术',
-        '数字化', '数字技术', '数字经济', '数字转型',
+        '人工智能', 'AI', '大数据', '云计算', '区块链',
+        '金融科技', 'Fintech', '数字化转型', '数字金融',
+        '科技赋能', '智能化',
+        '机器学习', '深度学习', '神经网络', '自然语言处理',
+        '知识图谱', '联邦学习', '隐私计算', '算法', '数据挖掘',
+        '风控模型', '决策引擎', '客户画像', '数据画像',
+        '生物识别', '人脸识别', '信用评分',
+        '智能风控', '智能信贷', '反欺诈', '智能审批',
+        '智能催收', '贷后监控', '开放银行',
     ]
 
     for md_file in md_dir.glob("*.md"):
         with open(md_file, 'r', encoding='utf-8') as f:
             content = f.read()
-        # 从词频表中提取
         for kw in fintech_kws:
-            count_match = re.search(rf'\|\s*{re.escape(kw)}\s*\|\s*(\d+)\s*\|', content)
+            count_match = re.search(rf'\|\s*{re.escape(kw)}\s*\|\s*.*?\|\s*(\d+)\s*\|', content)
             if count_match:
                 word_freq[kw] += int(count_match.group(1))
+            else:
+                count_match = re.search(rf'\|\s*{re.escape(kw)}\s*\|\s*(\d+)\s*\|', content)
+                if count_match:
+                    word_freq[kw] += int(count_match.group(1))
 
     if not word_freq:
         logger.warning("词频数据为空，无法生成词云")
@@ -240,6 +273,98 @@ def generate_wordcloud(md_dir: Path, output_path: Path):
             wc.to_file(str(output_path))
         except Exception as e2:
             logger.error(f"词云简化版也失败: {e2}")
+
+
+def generate_comparison_wordcloud(md_dir: Path, df: pd.DataFrame, output_dir: Path):
+    """生成对比词云图：国有 vs 股份制，2023 vs 2025"""
+    fintech_kws = [
+        '人工智能', 'AI', '大数据', '云计算', '区块链',
+        '金融科技', 'Fintech', '数字化转型', '数字金融',
+        '科技赋能', '智能化',
+        '机器学习', '深度学习', '神经网络', '自然语言处理',
+        '知识图谱', '联邦学习', '隐私计算', '算法', '数据挖掘',
+        '风控模型', '决策引擎', '客户画像', '数据画像',
+        '生物识别', '人脸识别', '信用评分',
+        '智能风控', '智能信贷', '反欺诈', '智能审批',
+        '智能催收', '贷后监控', '开放银行',
+    ]
+    
+    def _extract_word_freq(md_files):
+        freq = Counter()
+        for md_file in md_files:
+            with open(md_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            for kw in fintech_kws:
+                count_match = re.search(rf'\|\s*{re.escape(kw)}\s*\|\s*.*?\|\s*(\d+)\s*\|', content)
+                if count_match:
+                    freq[kw] += int(count_match.group(1))
+                else:
+                    count_match = re.search(rf'\|\s*{re.escape(kw)}\s*\|\s*(\d+)\s*\|', content)
+                    if count_match:
+                        freq[kw] += int(count_match.group(1))
+        return freq
+    
+    wc_kwargs = {
+        'background_color': 'white', 'max_words': 30, 'width': 600, 'height': 400,
+        'collocations': False, 'min_font_size': 10, 'max_font_size': 100,
+    }
+    if FONT_PATH:
+        wc_kwargs['font_path'] = FONT_PATH
+    
+    # 1. 国有 vs 股份制对比词云
+    so_banks = df[df['bank_type'] == 'state_owned']['bank'].unique()
+    js_banks = df[df['bank_type'] == 'joint_stock']['bank'].unique()
+    
+    so_files = [md_dir / f"{b}_{y}年度报告.md" for b in so_banks for y in [2023, 2024, 2025]]
+    js_files = [md_dir / f"{b}_{y}年度报告.md" for b in js_banks for y in [2023, 2024, 2025]]
+    so_files = [f for f in so_files if f.exists()]
+    js_files = [f for f in js_files if f.exists()]
+    
+    so_freq = _extract_word_freq(so_files)
+    js_freq = _extract_word_freq(js_files)
+    
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    for ax, freq, title, cmap in [(axes[0], so_freq, '国有银行', 'Blues'), (axes[1], js_freq, '股份制银行', 'Oranges')]:
+        if freq:
+            wc = WordCloud(**wc_kwargs, colormap=cmap)
+            wc.generate_from_frequencies(freq)
+            ax.imshow(wc, interpolation='bilinear')
+            ax.set_title(title, fontsize=14, fontweight='bold')
+            ax.axis('off')
+        else:
+            ax.text(0.5, 0.5, '无数据', fontsize=20, ha='center')
+            ax.axis('off')
+    fig.suptitle('金融科技关键词词云：国有银行 vs 股份制银行', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(str(output_dir / 'wordcloud_comparison_type.png'), dpi=150, bbox_inches='tight')
+    plt.close()
+    logger.info(f"类型对比词云已保存: wordcloud_comparison_type.png")
+    
+    # 2. 2023 vs 2025对比词云
+    y23_files = [md_dir / f"{b}_2023年度报告.md" for b in df['bank'].unique()]
+    y25_files = [md_dir / f"{b}_2025年度报告.md" for b in df['bank'].unique()]
+    y23_files = [f for f in y23_files if f.exists()]
+    y25_files = [f for f in y25_files if f.exists()]
+    
+    y23_freq = _extract_word_freq(y23_files)
+    y25_freq = _extract_word_freq(y25_files)
+    
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    for ax, freq, title, cmap in [(axes[0], y23_freq, '2023年', 'Greens'), (axes[1], y25_freq, '2025年', 'Purples')]:
+        if freq:
+            wc = WordCloud(**wc_kwargs, colormap=cmap)
+            wc.generate_from_frequencies(freq)
+            ax.imshow(wc, interpolation='bilinear')
+            ax.set_title(title, fontsize=14, fontweight='bold')
+            ax.axis('off')
+        else:
+            ax.text(0.5, 0.5, '无数据', fontsize=20, ha='center')
+            ax.axis('off')
+    fig.suptitle('金融科技关键词词云：2023年 vs 2025年', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(str(output_dir / 'wordcloud_comparison_year.png'), dpi=150, bbox_inches='tight')
+    plt.close()
+    logger.info(f"年份对比词云已保存: wordcloud_comparison_year.png")
 
 
 # ── 趋势图 ────────────────────────────────────────────────────────
@@ -395,8 +520,10 @@ def save_excel_report(df: pd.DataFrame, desc_stats: pd.DataFrame, corr: pd.DataF
     # ── Sheet 1: 面板数据 ──
     ws1 = wb.active
     ws1.title = '面板数据'
-    style_data(ws1, 1, 1, df[['bank', 'year', 'bank_type_label', 'npl', 'roe', 'roa',
-                               'total_assets', 'fintech_total', 'fai']])
+    panel_cols = ['bank', 'year', 'bank_type_label', 'npl', 'roe', 'roa',
+                 'total_assets', 'fintech_total', 'fai',
+                 'fai_strategy', 'fai_algorithm', 'fai_risk_model', 'fai_credit']
+    style_data(ws1, 1, 1, df[panel_cols])
     # 列宽
     for col in ['A', 'B', 'C']:
         ws1.column_dimensions[col].width = 12
@@ -416,15 +543,15 @@ def save_excel_report(df: pd.DataFrame, desc_stats: pd.DataFrame, corr: pd.DataF
 
     # ── Sheet 3: 相关性矩阵 ──
     ws3 = wb.create_sheet('相关性矩阵')
-    ws3.merge_cells('A1:F1')
-    ws3['A1'] = 'Table 2: Pearson相关系数矩阵'
+    ws3.merge_cells('A1:J1')
+    ws3['A1'] = 'Table 2: Pearson相关系数矩阵（含四维度子FAI）'
     style_header(ws3['A1'], bg='1F4E79')
     ws3['A1'].font = Font(color='FFFFFF', bold=True, size=12)
     ws3.row_dimensions[1].height = 25
     corr_with_idx = corr.reset_index()
     corr_with_idx.columns = ['变量'] + list(corr.columns)
     style_data(ws3, 2, 1, corr_with_idx, header_bg='2E75B6')
-    for i in range(1, 8):
+    for i in range(1, 11):
         ws3.column_dimensions[chr(64 + i)].width = 12
 
     # ── Sheet 4: 回归结果 ──
@@ -485,6 +612,10 @@ def main():
     logger.info("生成词云图...")
     wc_path = analysis_dir / "wordcloud.png"
     generate_wordcloud(md_dir, wc_path)
+
+    # 4b. 对比词云图
+    logger.info("生成对比词云图...")
+    generate_comparison_wordcloud(md_dir, df, analysis_dir)
 
     # 5. 趋势图
     logger.info("生成趋势图...")

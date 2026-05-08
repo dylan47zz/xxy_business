@@ -92,7 +92,11 @@ python scripts/06_generate_paper.py
 | NPL | 不良贷款率（%） | 各行年报 |
 | ROE | 加权平均净资产收益率（%） | 各行年报 |
 | ROA | 平均总资产回报率（%） | 各行年报 |
-| FAI | 金融科技采纳指数 = 关键词词频/字符数×10000（‱） | NLP提取 |
+| FAI | 金融科技采纳指数 = 关键词词频/字符数×10000（‱） | NLP提取（四维度分层） |
+| FAI-strategy | FAI-综合战略层子指数（‱） | NLP提取 |
+| FAI-algorithm | FAI-底层算法层子指数（‱） | NLP提取 |
+| FAI-risk_model | FAI-风控模型层子指数（‱） | NLP提取 |
+| FAI-credit | FAI-信贷业务层子指数（‱） | NLP提取 |
 | Size | ln（总资产，亿元） | 各行年报 |
 
 ---
@@ -101,12 +105,14 @@ python scripts/06_generate_paper.py
 
 ```
 模型              变量          系数      p值    显著性
-OLS (FAI only)   FAI         -0.0774   0.0     ***
-OLS + Controls   FAI         -0.0554   0.0     ***
-                 ROE         -0.0362   0.0     ***
-Fixed Effects    FAI         -0.0161   0.304   n.s.
-                 ROE         -0.0226   0.097   *
-                 Size(ln)    -0.6001   0.001   ***
+OLS (FAI only)   FAI         -0.083    0.0     ***
+OLS + Controls   FAI         -0.061    0.0     ***
+                 ROE         -0.037    0.0     ***
+Fixed Effects    FAI         -0.018    0.334   n.s.
+                 Size(ln)    -0.605    0.001   ***
+Sub-FAI: Credit  FAI-信贷    -0.328    0.0     ***
+Sub-FAI: Risk    FAI-风控    -0.808    0.004   **
 
-Pearson相关: FAI × NPL = -0.596 (p<0.01)
+Pearson相关: FAI × NPL = -0.606 (p<0.01)
+FAI-信贷 × NPL = -0.409, FAI-风控 × NPL = -0.243
 ```
