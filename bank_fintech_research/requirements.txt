@@ -1,0 +1,22 @@
+# 年报下载与解析
+requests>=2.32.0
+pdfplumber>=0.11.0
+
+# 数据处理与统计
+pandas>=2.0.0
+numpy>=1.26.0
+scipy>=1.13.0
+statsmodels>=0.14.0
+
+# 可视化
+matplotlib>=3.9.0
+wordcloud>=1.9.0
+
+# 中文分词（词云）
+jieba>=0.42.1
+
+# Excel 输出
+openpyxl>=3.1.0
+
+# PDF 备选解析（兼容性）
+PyPDF2>=3.0.0
